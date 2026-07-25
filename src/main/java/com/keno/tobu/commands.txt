@@ -1,0 +1,1 @@
+& "C:\Program Files\RedHat\java-17-openjdk-17.0.16.0.8-1\bin\java.exe" -jar target/tobu-1.0-SNAPSHOT.jar
