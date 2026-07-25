@@ -1,51 +1,65 @@
 package com.keno.tobu;
 
+import com.keno.tobu.command.InfoCommand;
 import com.keno.tobu.command.SyncCommand;
+import com.keno.tobu.command.VersionCommand;
+import com.keno.tobu.console.ConsoleLogger;
+import com.keno.tobu.exception.CommandValidationException;
 import com.keno.tobu.git.GitService;
+import com.keno.tobu.service.SyncService;
+import com.keno.tobu.validation.CommandValidation;
+
+import static com.keno.tobu.constant.Constant.*;
 
 public class Tobu {
 
+    private static final ConsoleLogger consoleLogger = new ConsoleLogger();
+
     public static void main(String[] args) {
         if (args.length == 0) {
-            printHelp();
+            info();
             return;
         }
 
         String command = args[0];
-        if (command.equals("sync")) {
-            sync(args);
-        } else {
-            System.out.println("Unknown command: " + command);
-            printHelp();
+        try {
+            switch (command) {
+                case SYNC -> sync(args);
+                case VERSION -> version();
+                case INFO -> info();
+                default -> {
+                    consoleLogger.error("Unknown command: " + command);
+                    info();
+                }
+            }
+        } catch (CommandValidationException e) {
+            info();
+            throw new RuntimeException(e);
         }
     }
 
     private static void sync(String[] args) {
-        if (args.length < 2) {
-            System.out.println("Usage: tobu sync <branch> [stash-name]");
-            return;
-        }
+        CommandValidation validator = new CommandValidation();
+        validator.isSyncCommandValid(args);
 
         String branch = args[1];
         String stashName = args.length >= 3 ? args[2] : "auto-stash before sync";
 
         GitService gitService = new GitService();
-        SyncCommand syncCommand = new SyncCommand(gitService);
+        SyncService syncService = new SyncService(gitService, consoleLogger);
+        SyncCommand syncCommand = new SyncCommand(syncService);
 
         syncCommand.execute(branch, stashName);
     }
 
-    private static void printHelp() {
-        System.out.println("""
-                Tobu - Personal Developer CLI
 
-                Usage:
-                  tobu sync <branch> [stash-name]
+    private static void version() {
+        VersionCommand versionCommand = new VersionCommand(consoleLogger);
+        versionCommand.execute();
+    }
 
-                Examples:
-                  tobu sync dev
-                  tobu sync dev "Changes"
-                  tobu sync dev "Payment API work"
-                """);
+    private static void info() {
+        InfoCommand infoCommand = new InfoCommand(consoleLogger);
+        infoCommand.execute();
     }
 }

@@ -5,10 +5,12 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.keno.tobu.constant.Constant.GIT;
+
 public class GitService {
 
     public String getCurrentBranch() {
-        CommandResult result = execute("git", "branch", "--show-current");
+        CommandResult result = execute(GIT, "branch", "--show-current");
         if (result.isFailure()) {
             throw new RuntimeException("Failed to get current branch: " + result.error());
         }
@@ -17,7 +19,7 @@ public class GitService {
     }
 
     public boolean hasUncommittedChanges() {
-        CommandResult result = execute("git", "status", "--porcelain");
+        CommandResult result = execute(GIT, "status", "--porcelain");
         if (result.isFailure()) {
             throw new RuntimeException("Failed to check git status: " + result.error());
         }
@@ -26,19 +28,19 @@ public class GitService {
     }
 
     public CommandResult stash(String stashName) {
-        return execute("git", "stash", "push", "-u", "-m", "tobu: " + stashName);
+        return execute(GIT, "stash", "push", "-u", "-m", "tobu: " + stashName);
     }
 
     public CommandResult pull(String branch) {
-        return execute("git", "pull", "--no-edit", "origin", branch);
+        return execute(GIT, "pull", "--no-edit", "origin", branch);
     }
 
     public CommandResult stashApply(String stashReference) {
-        return execute("git", "stash", "apply", stashReference);
+        return execute(GIT, "stash", "apply", stashReference);
     }
 
     public boolean hasMergeConflicts() {
-        CommandResult result = execute("git", "diff", "--name-only", "--diff-filter=U");
+        CommandResult result = execute(GIT, "diff", "--name-only", "--diff-filter=U");
         if (result.isFailure()) {
             throw new RuntimeException("Failed to check for merge conflicts: " + result.error());
         }
@@ -47,7 +49,7 @@ public class GitService {
     }
 
     public String getLatestStash() {
-        CommandResult result = execute("git", "stash", "list", "-1");
+        CommandResult result = execute(GIT, "stash", "list", "-1");
         if (result.isFailure()) {
             throw new RuntimeException("Failed to get latest stash: " + result.error());
         }
@@ -56,7 +58,7 @@ public class GitService {
     }
 
     public String getLatestStashReference() {
-        CommandResult result = execute("git", "stash", "list", "-1", "--format=%gd");
+        CommandResult result = execute(GIT, "stash", "list", "-1", "--format=%gd");
         if (result.isFailure()) {
             throw new RuntimeException("Failed to get latest stash reference: " + result.error());
         }
