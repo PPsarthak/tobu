@@ -45,7 +45,7 @@ public class SyncCommand {
             return;
         }
 
-        System.out.println("Successfully pulled latest changes from branch: " + branch + " " + pullResult.output());
+        System.out.println("Successfully pulled latest changes from branch: origin/" + branch + " " + pullResult.output());
         if (gitService.hasMergeConflicts()) {
             System.out.println("Pull resulted in merge conflicts");
             if (stashCreated) {
