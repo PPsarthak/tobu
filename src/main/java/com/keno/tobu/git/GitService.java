@@ -33,8 +33,35 @@ public class GitService {
         return execute("git", "pull", "--no-edit", "origin", branch);
     }
 
-    public CommandResult stashApply() {
-        return execute("git", "stash", "apply");
+    public CommandResult stashApply(String stashReference) {
+        return execute("git", "stash", "apply", stashReference);
+    }
+
+    public boolean hasMergeConflicts() {
+        CommandResult result = execute("git", "diff", "--name-only", "--diff-filter=U");
+        if (result.isFailure()) {
+            throw new RuntimeException("Failed to check for merge conflicts: " + result.error());
+        }
+
+        return !result.output().isBlank();
+    }
+
+    public String getLatestStash() {
+        CommandResult result = execute("git", "stash", "list", "-1");
+        if (result.isFailure()) {
+            throw new RuntimeException("Failed to get latest stash: " + result.error());
+        }
+
+        return result.output().trim();
+    }
+
+    public String getLatestStashReference() {
+        CommandResult result = execute("git", "stash", "list", "-1", "--format=%gd");
+        if (result.isFailure()) {
+            throw new RuntimeException("Failed to get latest stash reference: " + result.error());
+        }
+
+        return result.output().trim();
     }
 
     private CommandResult execute(String... command) {
