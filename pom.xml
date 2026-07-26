@@ -24,6 +24,12 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
 
             <!-- Create an executable JAR -->
@@ -33,6 +39,7 @@
                 <version>3.4.2</version>
 
                 <configuration>
+                    <finalName>tobu</finalName>
                     <archive>
                         <manifest>
                             <mainClass>

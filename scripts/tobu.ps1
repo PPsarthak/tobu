@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 # --------------------------------------------------
 
-$JarPath = Join-Path $PSScriptRoot "..\target\tobu-1.1.jar"
+$JarPath = Join-Path $PSScriptRoot "..\target\tobu.jar"
 $JarPath = [System.IO.Path]::GetFullPath($JarPath)
 
 $MinimumJavaVersion = 17
