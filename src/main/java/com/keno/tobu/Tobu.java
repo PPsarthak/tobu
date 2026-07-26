@@ -1,10 +1,12 @@
 package com.keno.tobu;
 
 import com.keno.tobu.command.InfoCommand;
+import com.keno.tobu.command.RollbackCommand;
 import com.keno.tobu.command.SyncCommand;
 import com.keno.tobu.command.VersionCommand;
 import com.keno.tobu.console.ConsoleLogger;
 import com.keno.tobu.exception.CommandValidationException;
+import com.keno.tobu.git.CommandResult;
 import com.keno.tobu.git.GitService;
 import com.keno.tobu.service.SyncService;
 import com.keno.tobu.validation.CommandValidation;
@@ -27,6 +29,7 @@ public class Tobu {
                 case SYNC -> sync(args);
                 case VERSION -> version();
                 case INFO -> info();
+                case ROLLBACK ->  rollback(args);
                 default -> {
                     consoleLogger.error("Unknown command: " + command);
                     info();
@@ -52,6 +55,12 @@ public class Tobu {
         syncCommand.execute(branch, stashName);
     }
 
+
+    private static void rollback(String[] args) {
+        GitService gitService = new GitService();
+        RollbackCommand rollbackCommand = new RollbackCommand(gitService, consoleLogger);
+        rollbackCommand.execute(args);
+    }
 
     private static void version() {
         VersionCommand versionCommand = new VersionCommand(consoleLogger);

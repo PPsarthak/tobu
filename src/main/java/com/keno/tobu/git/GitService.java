@@ -1,9 +1,14 @@
 package com.keno.tobu.git;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.keno.tobu.constant.Constant.GIT;
 
@@ -48,15 +53,6 @@ public class GitService {
         return !result.output().isBlank();
     }
 
-    public String getLatestStash() {
-        CommandResult result = execute(GIT, "stash", "list", "-1");
-        if (result.isFailure()) {
-            throw new RuntimeException("Failed to get latest stash: " + result.error());
-        }
-
-        return result.output().trim();
-    }
-
     public String getLatestStashReference() {
         CommandResult result = execute(GIT, "stash", "list", "-1", "--format=%gd");
         if (result.isFailure()) {
@@ -64,6 +60,64 @@ public class GitService {
         }
 
         return result.output().trim();
+    }
+
+    public String findByStashName(String stashName) {
+        CommandResult result = execute(GIT, "stash", "list");
+        if (result.isFailure()) {
+            return null;
+        }
+
+        return Arrays.stream(result.output().split("\\R"))
+                .filter(line -> line.contains(stashName))
+                .map(line -> line.substring(0, line.indexOf(":")))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public CommandResult getStashPatch(String stashReference) {
+        return execute(
+                GIT,
+                "stash",
+                "show",
+                "--binary",
+                "--format=",
+                stashReference
+        );
+    }
+
+    public CommandResult rollbackStash(String stashReference) {
+        CommandResult patchResult = getStashPatch(stashReference);
+
+        if (patchResult.isFailure()) {
+            return patchResult;
+        }
+
+        return applyReversePatch(patchResult.output());
+    }
+
+    private CommandResult applyReversePatch(String patch) {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(GIT,"apply","-R","--whitespace=nowarn");
+            Process process = processBuilder.start();
+            process.getOutputStream().write(patch.getBytes(StandardCharsets.UTF_8));
+            process.getOutputStream().close();
+
+            String output = readStream(process.getInputStream());
+            String error = readStream(process.getErrorStream());
+
+            int exitCode = process.waitFor();
+
+            return new CommandResult(exitCode, output, error);
+        } catch (Exception e) {
+            return new CommandResult(-1,"",e.getMessage());
+        }
+    }
+
+    private String readStream(InputStream inputStream) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        }
     }
 
     private CommandResult execute(String... command) {
