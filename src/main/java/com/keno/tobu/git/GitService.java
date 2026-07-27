@@ -2,10 +2,7 @@ package com.keno.tobu.git;
 
 import com.keno.tobu.console.ConsoleLogger;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,8 +10,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.keno.tobu.constant.Constant.GIT;
+import static com.keno.tobu.constant.Constant.STASH;
 
 public class GitService {
+
+    private ConsoleLogger consoleLogger = new ConsoleLogger();
 
     public String getCurrentBranch() {
         CommandResult result = execute(GIT, "branch", "--show-current");
@@ -35,7 +35,7 @@ public class GitService {
     }
 
     public CommandResult stash(String stashName) {
-        return execute(GIT, "stash", "push", "-u", "-m", "tobu: " + stashName);
+        return execute(GIT, STASH, "push", "-u", "-m", "tobu: " + stashName);
     }
 
     public CommandResult pull(String branch) {
@@ -43,7 +43,7 @@ public class GitService {
     }
 
     public CommandResult stashApply(String stashReference) {
-        return execute(GIT, "stash", "apply", stashReference);
+        return execute(GIT, STASH, "apply", stashReference);
     }
 
     public boolean hasMergeConflicts() {
@@ -56,7 +56,7 @@ public class GitService {
     }
 
     public String getLatestStashReference() {
-        CommandResult result = execute(GIT, "stash", "list", "-1", "--format=%gd");
+        CommandResult result = execute(GIT, STASH, "list", "-1", "--format=%gd");
         if (result.isFailure()) {
             throw new RuntimeException("Failed to get latest stash reference: " + result.error());
         }
@@ -65,7 +65,7 @@ public class GitService {
     }
 
     public String findByStashName(String stashName) {
-        CommandResult result = execute(GIT,"stash","list","--format=%gd|%gs");
+        CommandResult result = execute(GIT, STASH, "list", "--format=%gd|%gs");
         if (result.isFailure()) {
             return null;
         }
@@ -76,7 +76,7 @@ public class GitService {
                 .filter(line -> {
                     String[] parts = line.split("\\|", 2);
                     return parts.length == 2
-                            && parts[1].endsWith("tobu: " + stashName);
+                            && parts[1].endsWith(stashName);
                 })
                 .map(line -> line.substring(0, line.indexOf('|')))
                 .findFirst()
@@ -84,7 +84,7 @@ public class GitService {
     }
 
     public String findStashByCommitHash(String commitHash) {
-        CommandResult result = execute(GIT,"stash","list","--format=%gd %H");
+        CommandResult result = execute(GIT, STASH, "list", "--format=%gd %H");
 
         if (result.isFailure()) {
             return null;
@@ -98,11 +98,11 @@ public class GitService {
     }
 
     public CommandResult dropStash(String stashReference) {
-        return execute(GIT, "stash", "drop", stashReference);
+        return execute(GIT, STASH, "drop", stashReference);
     }
 
     public String getStashCommitHash(String stashReference) {
-        CommandResult result = execute(GIT,"rev-parse",stashReference);
+        CommandResult result = execute(GIT, "rev-parse", stashReference);
         if (result.isFailure()) {
             return null;
         }
@@ -110,48 +110,52 @@ public class GitService {
         return result.output().trim();
     }
 
-    public CommandResult getStashPatch(String stashReference) {
-        return execute(
-                GIT,
-                "stash",
-                "show",
-                "--binary",
-                "--format=",
-                stashReference
-        );
-    }
-
     public CommandResult rollbackStash(String stashReference) {
-        CommandResult patchResult = getStashPatch(stashReference);
-
-        if (patchResult.isFailure()) {
-            return patchResult;
-        }
-
-        return applyReversePatch(patchResult.output());
-    }
-
-    private CommandResult applyReversePatch(String patch) {
         try {
-            ProcessBuilder processBuilder = new ProcessBuilder(GIT,"apply","-R","--whitespace=nowarn");
-            Process process = processBuilder.start();
-            process.getOutputStream().write(patch.getBytes(StandardCharsets.UTF_8));
-            process.getOutputStream().close();
+            Process stashProcess = new ProcessBuilder(GIT, STASH, "show", "-p", stashReference).start();
+            Process applyProcess = new ProcessBuilder(GIT, "apply", "-R").start();
 
-            String output = readStream(process.getInputStream());
-            String error = readStream(process.getErrorStream());
+            // Directly pipe:
+            // git stash show -p <stash> and git apply -R together
+            try (
+                    InputStream stashOutput = stashProcess.getInputStream();
+                    OutputStream applyInput = applyProcess.getOutputStream()
+            ) {
+                stashOutput.transferTo(applyInput);
+            }
 
-            int exitCode = process.waitFor();
+            // Capture stderr from both processes
+            String stashError;
+            try (InputStream errorStream = stashProcess.getErrorStream()) {
+                stashError = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8);
+            }
 
-            return new CommandResult(exitCode, output, error);
+            String applyOutput;
+            try (InputStream outputStream = applyProcess.getInputStream()) {
+                applyOutput = new String(outputStream.readAllBytes(), StandardCharsets.UTF_8);
+            }
+
+            String applyError;
+            try (InputStream errorStream = applyProcess.getErrorStream()) {
+                applyError = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8);
+            }
+
+            int stashExitCode = stashProcess.waitFor();
+            int applyExitCode = applyProcess.waitFor();
+
+            // If generating the stash patch itself failed
+            if (stashExitCode != 0) {
+                return new CommandResult(stashExitCode, "", stashError);
+            }
+
+            // If applying the reverse patch failed
+            if (applyExitCode != 0) {
+                return new CommandResult(applyExitCode, applyOutput, applyError);
+            }
+
+            return new CommandResult(0, applyOutput, "");
         } catch (Exception e) {
-            return new CommandResult(-1,"",e.getMessage());
-        }
-    }
-
-    private String readStream(InputStream inputStream) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+            return new CommandResult(-1, "", e.getMessage());
         }
     }
 

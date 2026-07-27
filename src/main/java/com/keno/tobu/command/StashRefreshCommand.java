@@ -61,7 +61,7 @@ public class StashRefreshCommand {
 
         consoleLogger.info("Removing old stash: " + oldStashAfterRefresh);
 
-        CommandResult dropStashResult = gitService.dropStash(oldStashReference);
+        CommandResult dropStashResult = gitService.dropStash(oldStashAfterRefresh);
         if (dropStashResult.isFailure()) {
             consoleLogger.error("Failed to drop the old stash: " + dropStashResult.error());
             consoleLogger.warning("New stash: " + newStashReference + " Old stash: " + oldStashReference);

@@ -14,9 +14,9 @@ public class RollbackCommand {
         this.consoleLogger = consoleLogger;
     }
 
-    public void execute(String[] arg) {
-        String stashName = arg[1];
+    public void execute(String stashName) {
         consoleLogger.info("Rolling back changes from stash: " + stashName);
+
         String stashReference = gitService.findByStashName(stashName);
         if (stashReference == null) {
             consoleLogger.error("Could not find stash: " + stashName);
@@ -24,7 +24,15 @@ public class RollbackCommand {
         }
 
         consoleLogger.info("Found stash: " + stashReference);
+        consoleLogger.info("Reverse applying that stash...");
 
+        CommandResult rollbackResult = gitService.rollbackStash(stashReference);
+        if (rollbackResult.isFailure()) {
+            consoleLogger.error("Failed to rollback stash: " + rollbackResult.error());
+            return;
+        }
+
+        consoleLogger.success("Stash rolled back successfully. The stash is also preserved");
     }
 
 }

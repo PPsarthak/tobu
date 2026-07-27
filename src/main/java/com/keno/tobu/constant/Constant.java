@@ -28,6 +28,8 @@ public class Constant {
     public static final String VERSION = "version";
     public static final String INFO = "info";
     public static final String ROLLBACK = "rollback";
+    public static final String STASH_REFRESH = "stash-refresh";
 
     public static final String GIT = "git";
+    public static final String STASH = "stash";
 }

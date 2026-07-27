@@ -26,7 +26,7 @@ public class Tobu {
                 case VERSION -> version();
                 case INFO -> info();
                 case ROLLBACK ->  rollback(args);
-                case "stash-refresh" -> stashRefresh(args);
+                case STASH_REFRESH -> stashRefresh(args);
                 default -> {
                     consoleLogger.error("Unknown command: " + command);
                     info();
@@ -61,7 +61,7 @@ public class Tobu {
     private static void rollback(String[] args) {
         GitService gitService = new GitService();
         RollbackCommand rollbackCommand = new RollbackCommand(gitService, consoleLogger);
-        rollbackCommand.execute(args);
+        rollbackCommand.execute(args[1]);
     }
 
     private static void version() {
