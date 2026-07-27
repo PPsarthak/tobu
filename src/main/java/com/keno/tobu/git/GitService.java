@@ -1,5 +1,7 @@
 package com.keno.tobu.git;
 
+import com.keno.tobu.console.ConsoleLogger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,16 +65,49 @@ public class GitService {
     }
 
     public String findByStashName(String stashName) {
-        CommandResult result = execute(GIT, "stash", "list");
+        CommandResult result = execute(GIT,"stash","list","--format=%gd|%gs");
         if (result.isFailure()) {
             return null;
         }
 
         return Arrays.stream(result.output().split("\\R"))
-                .filter(line -> line.contains(stashName))
-                .map(line -> line.substring(0, line.indexOf(":")))
+                .map(String::trim)
+                .map(line -> line.replace("'", ""))   // optional safety
+                .filter(line -> {
+                    String[] parts = line.split("\\|", 2);
+                    return parts.length == 2
+                            && parts[1].endsWith("tobu: " + stashName);
+                })
+                .map(line -> line.substring(0, line.indexOf('|')))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public String findStashByCommitHash(String commitHash) {
+        CommandResult result = execute(GIT,"stash","list","--format=%gd %H");
+
+        if (result.isFailure()) {
+            return null;
+        }
+
+        return Arrays.stream(result.output().split("\\R"))
+                .filter(line -> line.endsWith(commitHash))
+                .map(line -> line.substring(0, line.indexOf(" ")))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public CommandResult dropStash(String stashReference) {
+        return execute(GIT, "stash", "drop", stashReference);
+    }
+
+    public String getStashCommitHash(String stashReference) {
+        CommandResult result = execute(GIT,"rev-parse",stashReference);
+        if (result.isFailure()) {
+            return null;
+        }
+
+        return result.output().trim();
     }
 
     public CommandResult getStashPatch(String stashReference) {

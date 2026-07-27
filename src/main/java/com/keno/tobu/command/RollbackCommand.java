@@ -25,15 +25,6 @@ public class RollbackCommand {
 
         consoleLogger.info("Found stash: " + stashReference);
 
-        CommandResult patchResult = gitService.rollbackStash(stashReference);
-        consoleLogger.warning("Rollback patch result: " + patchResult);
-        if (patchResult.isFailure()) {
-            consoleLogger.error("Failed to rollback stash: " + patchResult.error());
-            return;
-        }
-
-        consoleLogger.success("Successfully rolled back changes from: " + stashName);
-        consoleLogger.info("Original stash has been preserved.");
     }
 
 }

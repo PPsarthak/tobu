@@ -1,12 +1,8 @@
 package com.keno.tobu;
 
-import com.keno.tobu.command.InfoCommand;
-import com.keno.tobu.command.RollbackCommand;
-import com.keno.tobu.command.SyncCommand;
-import com.keno.tobu.command.VersionCommand;
+import com.keno.tobu.command.*;
 import com.keno.tobu.console.ConsoleLogger;
 import com.keno.tobu.exception.CommandValidationException;
-import com.keno.tobu.git.CommandResult;
 import com.keno.tobu.git.GitService;
 import com.keno.tobu.service.SyncService;
 import com.keno.tobu.validation.CommandValidation;
@@ -30,6 +26,7 @@ public class Tobu {
                 case VERSION -> version();
                 case INFO -> info();
                 case ROLLBACK ->  rollback(args);
+                case "stash-refresh" -> stashRefresh(args);
                 default -> {
                     consoleLogger.error("Unknown command: " + command);
                     info();
@@ -55,6 +52,11 @@ public class Tobu {
         syncCommand.execute(branch, stashName);
     }
 
+    private static void stashRefresh(String[] args) {
+        GitService gitService = new GitService();
+        StashRefreshCommand stashRefreshCommand = new StashRefreshCommand(gitService, consoleLogger);
+        stashRefreshCommand.execute(args[1]);
+    }
 
     private static void rollback(String[] args) {
         GitService gitService = new GitService();
